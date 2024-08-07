@@ -1,8 +1,10 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'Signup.dart'; // Make sure this path is correct
+import 'Signup.dart'; // Ensure the path is correct
 import 'SetPasswordScreen.dart'; // Import SetPasswordScreen
 import 'MainActivity.dart'; // Import MainActivity
-import 'package:flutter/gestures.dart'; // Add this import
+import 'package:http/http.dart' as http; // Add http package
+import 'dart:convert'; // For JSON encoding/decoding
 
 class LoginActivity extends StatefulWidget {
   @override
@@ -21,10 +23,45 @@ class _LoginActivityState extends State<LoginActivity> {
     });
   }
 
-  void _submitForm() {
+  Future<void> _submitForm() async {
     if (_formKey.currentState!.validate()) {
-      // Simulate a login success and navigate to MainActivity
-      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => MainActivity()));
+      // Send login request
+      try {
+        final response = await http.post(
+          Uri.parse('http://192.168.1.102/flutter_backend/login_user.php'), // Update the URL
+          body: {
+            'email_or_mobile': emailController.text,
+            'password': passwordController.text,
+          },
+        );
+
+        print('Response status: ${response.statusCode}');
+        print('Response body: ${response.body}');
+
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          print('Decoded data: $data');
+          if (data['status'] == 'success') {
+            // Navigate to MainActivity on successful login
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => MainActivity()),
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Login failed: ${data['message']}')),
+            );
+          }
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error: ${response.statusCode}, ${response.body}')),
+          );
+        }
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Exception: $e')),
+        );
+      }
     } else {
       print('Form is not valid');
     }
